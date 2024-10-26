@@ -1,89 +1,97 @@
 import streamlit as st
 import pandas as pd
-from openai import OpenAI  # Simplifica el import sin OpenAIError
+import plotly.express as px
+import openai
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.cluster import KMeans
+import numpy as np
 
-# Show title and description
-st.title("💬 Chatbot y Análisis de Sentimiento")
-st.write(
-    "Este chatbot utiliza el modelo GPT-3.5 de OpenAI para generar respuestas. "
-    "También permite analizar el sentimiento de los datos de un archivo CSV. "
-    "Para usar esta app, necesitas proporcionar una clave API de OpenAI, que puedes obtener [aquí](https://platform.openai.com/account/api-keys)."
-)
+# Configuración de la página
+st.set_page_config(page_title="Análisis de Sentimiento con API de OpenAI", layout="wide")
 
-# Ask user for their OpenAI API key via `st.text_input`
-openai_api_key = st.text_input("OpenAI API Key", type="password")
-if not openai_api_key:
-    st.info("Por favor añade tu clave API de OpenAI para continuar.", icon="🗝️")
-else:
-    # Create an OpenAI client
-    client = OpenAI(api_key=openai_api_key)
+# Título de la aplicación
+st.title("Análisis de Sentimiento de Clientes con OpenAI")
 
-    # File uploader for CSV
-    uploaded_file = st.file_uploader("Sube un archivo CSV para análisis de sentimiento", type="csv")
+# Ingreso de la API Key de OpenAI
+st.sidebar.header("Configuración de la API de OpenAI")
+openai_api_key = st.sidebar.text_input("Introduce tu API Key de OpenAI", type="password")
+
+# Verificar si la API Key está ingresada
+if openai_api_key:
+    st.sidebar.success("API Key ingresada correctamente.")
+    openai.api_key = openai_api_key
+
+    # Cargar archivo CSV
+    st.sidebar.header("Carga tu archivo de datos")
+    uploaded_file = st.sidebar.file_uploader("Sube un archivo CSV", type=["csv"])
+
+    # Agregar opción para seleccionar delimitador
+    delimiter = st.sidebar.selectbox("Selecciona el delimitador utilizado en tu archivo CSV", [",", ";", "\t", "|"])
+
     if uploaded_file:
-        # Read the CSV file into a DataFrame
-        data = pd.read_csv(uploaded_file)
-        
-        # Display the data
-        st.write("Datos cargados:")
-        st.dataframe(data)
+        # Intentar cargar el archivo CSV con control de errores y delimitador seleccionado
+        try:
+            data = pd.read_csv(uploaded_file, delimiter=delimiter, on_bad_lines='skip', encoding='utf-8')
+        except Exception as e:
+            st.error(f"Error al cargar el CSV: {e}")
+            data = None
 
-        # Choose a column for sentiment analysis
-        text_column = st.selectbox("Selecciona la columna de texto para analizar el sentimiento", data.columns)
+        if data is not None:
+            st.subheader("Datos cargados (mostrando las primeras filas)")
+            st.write(data.head())
 
-        # Button to perform sentiment analysis
-        if st.button("Analizar Sentimiento"):
-            sentiment_results = []
-            for text in data[text_column].dropna():
-                # Intentar generar una respuesta con la API de OpenAI
-                response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": f"Analiza el sentimiento de este texto: {text}"}]
-                )
-                # Verificar si el campo de contenido existe en la respuesta
-                if response.choices and "content" in response.choices[0].message:
-                    sentiment = response.choices[0].message['content']
-                else:
-                    sentiment = "Error: No se obtuvo respuesta de la API"
-                
-                # Agregar el resultado a la lista de sentimientos
-                sentiment_results.append(sentiment)
-            
-            # Añadir los resultados al DataFrame y mostrar
-            data["Sentimiento"] = sentiment_results
-            st.write("Resultados de Análisis de Sentimiento:")
-            st.dataframe(data)
-    else:
-        st.info("Por favor sube un archivo CSV para realizar el análisis.")
+            # Seleccionar la columna de texto para el análisis de sentimiento
+            st.sidebar.header("Selecciona la columna de texto")
+            text_column = st.sidebar.selectbox("Columna de texto para analizar", data.columns)
 
-    # Chatbot session state for message storage
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+            if text_column:
+                st.subheader(f"Análisis de sentimiento basado en la columna: {text_column}")
 
-    # Display existing chat messages
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+                # Procesar cada texto y hacer una solicitud de análisis de sentimiento con OpenAI
+                sentiment_results = []
+                for text in data[text_column].dropna():
+                    try:
+                        response = openai.Completion.create(
+                            model="gpt-3.5-turbo",
+                            prompt=f"Analiza el sentimiento de este texto y clasifícalo en positivo, neutral o negativo: '{text}'",
+                            max_tokens=10
+                        )
+                        sentiment = response.choices[0].text.strip()
+                        sentiment_results.append(sentiment)
+                    except Exception as e:
+                        sentiment_results.append("Error")
+                        st.error(f"Error en la solicitud a la API de OpenAI: {e}")
 
-    # Chat input field
-    if prompt := st.chat_input("¿Cómo te puedo ayudar?"):
-        # Store and display the current prompt
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+                # Agregar los resultados al DataFrame
+                data['Sentimiento'] = sentiment_results
 
-        # Generate a response using the OpenAI API
-        stream = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ],
-            stream=True,
-        )
+                # Mostrar los resultados
+                st.subheader("Resultados del Análisis de Sentimiento")
+                st.write(data[[text_column, 'Sentimiento']].head())
 
-        # Stream the response to the chat
-        with st.chat_message("assistant"):
+                # Visualización de los resultados
+                st.subheader("Distribución de Sentimientos")
+                sentiment_count = data['Sentimiento'].value_counts()
+                fig = px.pie(sentiment_count, names=sentiment_count.index, values=sentiment_count.values, 
+                             title="Distribución de Sentimientos")
+                st.plotly_chart(fig)
+
+                st.subheader("Sentimiento por Filtros Adicionales")
+                # Seleccionar columnas adicionales para análisis de segmentación
+                filter_columns = st.sidebar.multiselect("Selecciona columnas adicionales para segmentar el sentimiento", 
+                                                        [col for col in data.columns if col != text_column and col != 'Sentimiento'])
+
+                if filter_columns:
+                    for col in filter_columns:
+                        fig = px.histogram(data, x=col, color='Sentimiento', barmode='group', 
+                                           title=f"Distribución de Sentimiento por {col}")
+                        st.plotly_chart(fig)
+
+else:
+    st.warning("Por favor, ingresa tu API Key de OpenAI para comenzar.")
+S
             response = st.write_stream(stream)
         st.session_state.messages.append({"role": "assistant", "content": response})
 
