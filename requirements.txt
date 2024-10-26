@@ -4,3 +4,4 @@ plotly
 openai
 scikit-learn
 numpy
+matplotlib
