@@ -34,12 +34,22 @@ else:
         if st.button("Analizar Sentimiento"):
             sentiment_results = []
             for text in data[text_column].dropna():
-                # Generate a response using the OpenAI API
-                response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": f"Analiza el sentimiento de este texto: {text}"}]
-                )
-                sentiment = response.choices[0].message['content']
+                try:
+                    # Generate a response using the OpenAI API
+                    response = client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[{"role": "user", "content": f"Analiza el sentimiento de este texto: {text}"}]
+                    )
+                    
+                    # Safely access the response
+                    if response.choices and 'content' in response.choices[0].message:
+                        sentiment = response.choices[0].message['content']
+                    else:
+                        sentiment = "No se pudo obtener el sentimiento"
+                    
+                except Exception as e:
+                    sentiment = f"Error: {str(e)}"
+                
                 sentiment_results.append(sentiment)
             
             # Add the results to the DataFrame and display
