@@ -91,7 +91,5 @@ if openai_api_key:
 
 else:
     st.warning("Por favor, ingresa tu API Key de OpenAI para comenzar.")
-S
-            response = st.write_stream(stream)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+
 
