@@ -1,7 +1,4 @@
 streamlit
 pandas
-plotly
-openai
-scikit-learn
-numpy
 matplotlib
+openai
