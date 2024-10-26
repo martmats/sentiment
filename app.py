@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
-from openai import OpenAI
-from openai.error import OpenAIError
+from openai import OpenAI  # Simplifica el import sin OpenAIError
 
 # Show title and description
 st.title("💬 Chatbot y Análisis de Sentimiento")
@@ -36,24 +35,21 @@ else:
         if st.button("Analizar Sentimiento"):
             sentiment_results = []
             for text in data[text_column].dropna():
-                try:
-                    # Generate a response using the OpenAI API
-                    response = client.chat.completions.create(
-                        model="gpt-3.5-turbo",
-                        messages=[{"role": "user", "content": f"Analiza el sentimiento de este texto: {text}"}]
-                    )
-                    # Check if response is as expected
-                    if response.choices and "content" in response.choices[0].message:
-                        sentiment = response.choices[0].message['content']
-                    else:
-                        sentiment = "Error: No se obtuvo respuesta de la API"
-                except OpenAIError as e:
-                    sentiment = f"Error en la solicitud de API: {e}"
+                # Intentar generar una respuesta con la API de OpenAI
+                response = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[{"role": "user", "content": f"Analiza el sentimiento de este texto: {text}"}]
+                )
+                # Verificar si el campo de contenido existe en la respuesta
+                if response.choices and "content" in response.choices[0].message:
+                    sentiment = response.choices[0].message['content']
+                else:
+                    sentiment = "Error: No se obtuvo respuesta de la API"
                 
-                # Append result to list
+                # Agregar el resultado a la lista de sentimientos
                 sentiment_results.append(sentiment)
             
-            # Add the results to the DataFrame and display
+            # Añadir los resultados al DataFrame y mostrar
             data["Sentimiento"] = sentiment_results
             st.write("Resultados de Análisis de Sentimiento:")
             st.dataframe(data)
