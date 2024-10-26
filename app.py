@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from openai import OpenAI
+from openai.error import OpenAIError
 
 # Show title and description
 st.title("💬 Chatbot y Análisis de Sentimiento")
@@ -35,12 +36,21 @@ else:
         if st.button("Analizar Sentimiento"):
             sentiment_results = []
             for text in data[text_column].dropna():
-                # Generate a response using the OpenAI API
-                response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": f"Analiza el sentimiento de este texto: {text}"}]
-                )
-                sentiment = response.choices[0].message['content']
+                try:
+                    # Generate a response using the OpenAI API
+                    response = client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[{"role": "user", "content": f"Analiza el sentimiento de este texto: {text}"}]
+                    )
+                    # Check if response is as expected
+                    if response.choices and "content" in response.choices[0].message:
+                        sentiment = response.choices[0].message['content']
+                    else:
+                        sentiment = "Error: No se obtuvo respuesta de la API"
+                except OpenAIError as e:
+                    sentiment = f"Error en la solicitud de API: {e}"
+                
+                # Append result to list
                 sentiment_results.append(sentiment)
             
             # Add the results to the DataFrame and display
@@ -80,3 +90,4 @@ else:
         with st.chat_message("assistant"):
             response = st.write_stream(stream)
         st.session_state.messages.append({"role": "assistant", "content": response})
+
