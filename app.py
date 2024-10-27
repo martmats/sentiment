@@ -5,23 +5,33 @@ import spacy
 from spacytextblob.spacytextblob import SpacyTextBlob
 import openai
 from io import StringIO
+import subprocess
+
+# Descargar e instalar el modelo de spacy en_core_web_sm si no está disponible
+try:
+    nlp = spacy.load("en_core_web_sm")
+except OSError:
+    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
+    nlp = spacy.load("en_core_web_sm")
+
+# Agregar SpacyTextBlob al pipeline
+if "spacytextblob" not in nlp.pipe_names:
+    nlp.add_pipe("spacytextblob")
 
 # Configuración de la barra lateral
 st.sidebar.header("Configuración")
 openai_api_key = st.sidebar.text_input("Introduce tu API de OpenAI", type="password")
 uploaded_file = st.sidebar.file_uploader("Sube tu archivo CSV", type=["csv"])
-text_column = st.sidebar.text_input("Columna de Texto para Análisis de Sentimiento", value="texto")
-category_column = st.sidebar.text_input("Columna de Categoría o Producto (Opcional)")
-date_column = st.sidebar.text_input("Columna de Fecha (Opcional)")
 
-if openai_api_key and uploaded_file and text_column:
+if openai_api_key and uploaded_file:
     # Cargar los datos
     data = pd.read_csv(uploaded_file)
     
-    # Inicializar spacy con SpacyTextBlob
-    nlp = spacy.load("en_core_web_sm")
-    nlp.add_pipe("spacytextblob")
-
+    # Selección de la columna de texto
+    text_column = st.sidebar.selectbox("Selecciona la columna de texto para el análisis de sentimiento", data.columns)
+    category_column = st.sidebar.selectbox("Selecciona la columna de categoría o producto (opcional)", ["Ninguno"] + list(data.columns))
+    date_column = st.sidebar.selectbox("Selecciona la columna de fecha (opcional)", ["Ninguno"] + list(data.columns))
+    
     # Clasificar Sentimiento usando SpacyTextBlob
     def classify_sentiment(text):
         doc = nlp(text)
@@ -51,7 +61,7 @@ if openai_api_key and uploaded_file and text_column:
     st.pyplot(fig)
 
     # Gráfico 2: Análisis de Productos por Sentimiento
-    if category_column in data.columns:
+    if category_column != "Ninguno":
         st.header("Análisis de Productos por Sentimiento")
         product_sentiment_counts = data.groupby([category_column, "Sentimiento"]).size().unstack(fill_value=0)
         fig, ax = plt.subplots()
@@ -64,7 +74,7 @@ if openai_api_key and uploaded_file and text_column:
     st.header("Sentimiento Promedio por Categoría o Producto")
     sentiment_mapping = {"Positivo": 1, "Neutral": 0, "Negativo": -1}
     data["sentiment_score"] = data["Sentimiento"].map(sentiment_mapping)
-    if category_column in data.columns:
+    if category_column != "Ninguno":
         avg_sentiment = data.groupby(category_column)["sentiment_score"].mean()
         fig, ax = plt.subplots()
         avg_sentiment.plot(kind="line", ax=ax)
@@ -73,7 +83,7 @@ if openai_api_key and uploaded_file and text_column:
         st.pyplot(fig)
 
     # Gráfico 4: Tendencias de Sentimiento por Fecha
-    if date_column in data.columns:
+    if date_column != "Ninguno":
         st.header("Tendencias de Sentimiento por Fecha")
         data[date_column] = pd.to_datetime(data[date_column])
         sentiment_trend = data.groupby([date_column, "Sentimiento"]).size().unstack(fill_value=0)
@@ -105,3 +115,4 @@ if openai_api_key and uploaded_file and text_column:
             st.error("Error al generar la explicación: " + str(e))
 else:
     st.info("Introduce la API y sube un archivo para comenzar.")
+
