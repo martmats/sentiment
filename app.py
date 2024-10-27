@@ -5,16 +5,9 @@ import spacy
 from spacytextblob.spacytextblob import SpacyTextBlob
 import openai
 from io import StringIO
-import subprocess
 
-# Descargar e instalar el modelo de spacy en_core_web_sm si no está disponible
-try:
-    nlp = spacy.load("en_core_web_sm")
-except OSError:
-    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
-    nlp = spacy.load("en_core_web_sm")
-
-# Agregar SpacyTextBlob al pipeline
+# Cargar el modelo preinstalado en_core_web_sm
+nlp = spacy.load("en_core_web_sm")
 if "spacytextblob" not in nlp.pipe_names:
     nlp.add_pipe("spacytextblob")
 
@@ -113,6 +106,3 @@ if openai_api_key and uploaded_file:
             st.write(explanation)
         except Exception as e:
             st.error("Error al generar la explicación: " + str(e))
-else:
-    st.info("Introduce la API y sube un archivo para comenzar.")
-
