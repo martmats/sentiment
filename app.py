@@ -104,7 +104,7 @@ if openai_api_key and uploaded_file:
                     ax.set_ylabel("Conteo de Sentimiento")
                     st.pyplot(fig)
 
-                # Explicación con OpenAI (una sola llamada)
+                # Explicación con OpenAI usando ChatCompletion
                 if st.button("Generar Explicación de los Gráficos"):
                     explanation_prompt = """Explica brevemente los siguientes gráficos de análisis de sentimiento:
                     1. Distribución de Sentimientos - Muestra los porcentajes de cada tipo de sentimiento (Positivo, Negativo, Neutral) en el dataset.
@@ -113,17 +113,17 @@ if openai_api_key and uploaded_file:
                     4. Tendencias de Sentimiento por Fecha - Visualiza cómo cambian los sentimientos a lo largo del tiempo en el dataset.
                     """
                     try:
-                        response = openai.Completion.create(
-                            engine="text-davinci-003",
-                            prompt=explanation_prompt,
-                            max_tokens=150
+                        response = openai.ChatCompletion.create(
+                            model="gpt-3.5-turbo",
+                            messages=[
+                                {"role": "system", "content": "Eres un experto en análisis de datos y estrategias de marketing."},
+                                {"role": "user", "content": explanation_prompt}
+                            ]
                         )
-                        explanation = response.choices[0].text.strip()
+                        explanation = response.choices[0].message['content'].strip()
                         st.write("### Explicación de los Gráficos:")
                         st.write(explanation)
-                    except openai.error.OpenAIError as e:
-                        st.error(f"Error en la llamada a la API de OpenAI: {e}")
                     except Exception as e:
-                        st.error(f"Ocurrió un error inesperado: {e}")
+                        st.error(f"Error en la solicitud a la API de OpenAI: {e}")
 else:
     st.info("Introduce tu API Key de OpenAI y sube un archivo para continuar.")
