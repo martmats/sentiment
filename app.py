@@ -105,7 +105,7 @@ if openai_api_key and uploaded_file:
                     st.pyplot(fig)
 
                 # Generar explicación automáticamente después de los gráficos
-                explanation_prompt = """Explica brevemente los siguientes gráficos de análisis de sentimiento:
+                explanation_prompt = """Explica con detalle los resultados obtenidos los siguientes gráficos de análisis de sentimiento y posibles recomendaciones al respecto:
                 1. Distribución de Sentimientos - Muestra los porcentajes de cada tipo de sentimiento (Positivo, Negativo, Neutral) en el dataset.
                 2. Análisis de Productos por Sentimiento - Muestra los sentimientos específicos de cada producto o categoría.
                 3. Sentimiento Promedio por Categoría o Producto - Asigna puntajes a cada sentimiento y muestra el promedio por categoría o producto.
@@ -118,7 +118,7 @@ if openai_api_key and uploaded_file:
                             {"role": "system", "content": "Eres un experto en análisis de datos y estrategias de marketing."},
                             {"role": "user", "content": explanation_prompt}
                         ],
-                        max_tokens=250
+                        max_tokens=1250
                     )
                     explanation = response.choices[0].message['content'].strip()
                     st.write("### Explicación de los Gráficos:")
