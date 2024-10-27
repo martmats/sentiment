@@ -21,12 +21,15 @@ if openai_api_key and uploaded_file:
     # Verificar si el archivo tiene columnas antes de intentar seleccionar una
     if not data.empty:
         # Selección de la columna de texto
-        text_column = st.sidebar.selectbox("Selecciona la columna de texto para el análisis de sentimiento", data.columns)
+        text_column = st.sidebar.selectbox("Selecciona la columna de texto para el análisis de sentimiento", ["Seleccione una columna"] + list(data.columns))
         category_column = st.sidebar.selectbox("Selecciona la columna de categoría o producto (opcional)", ["Ninguno"] + list(data.columns))
         date_column = st.sidebar.selectbox("Selecciona la columna de fecha (opcional)", ["Ninguno"] + list(data.columns))
         
-        # Ejecutar el análisis de sentimiento solo si el usuario ha seleccionado una columna de texto
-        if text_column:
+        # Añadir botón para iniciar el análisis
+        start_analysis = st.sidebar.button("Iniciar análisis de sentimientos")
+        
+        # Ejecutar el análisis de sentimiento solo si el usuario ha seleccionado una columna de texto y ha hecho clic en el botón
+        if start_analysis and text_column != "Seleccione una columna":
             # Clasificar Sentimiento usando SpacyTextBlob, con manejo de valores nulos o no textuales
             def classify_sentiment(text):
                 if pd.isna(text) or not isinstance(text, str):
