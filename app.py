@@ -32,87 +32,98 @@ if openai_api_key and uploaded_file:
         if start_analysis and text_column != "Seleccione una columna":
             # Clasificar Sentimiento usando SpacyTextBlob, con manejo de valores nulos o no textuales
             def classify_sentiment(text):
-                if pd.isna(text) or not isinstance(text, str):
-                    return "Neutral"  # Omitir o clasificar como neutral si no es texto
-                doc = nlp(text)
-                polarity = doc._.blob.polarity
-                if polarity > 0.1:
-                    return "Positivo"
-                elif polarity < -0.1:
-                    return "Negativo"
-                else:
+                try:
+                    if pd.isna(text) or not isinstance(text, str):
+                        return "Neutral"  # Clasificar como neutral si no es texto o si es nulo
+                    doc = nlp(text)
+                    polarity = doc._.blob.polarity
+                    if polarity > 0.1:
+                        return "Positivo"
+                    elif polarity < -0.1:
+                        return "Negativo"
+                    else:
+                        return "Neutral"
+                except Exception as e:
+                    # Manejar cualquier otro error y clasificar como "Neutral"
+                    st.write(f"Error al analizar la fila: {e}")
                     return "Neutral"
 
             st.info("Clasificando el sentimiento de cada fila...")
-            data["Sentimiento"] = data[text_column].apply(classify_sentiment)
+            try:
+                data["Sentimiento"] = data[text_column].apply(classify_sentiment)
+            except Exception as e:
+                st.error(f"Error al aplicar el análisis de sentimientos: {e}")
             
-            # Gráfico 1: Distribución de Sentimientos
-            st.header("Distribución de Sentimientos")
-            sentiment_counts = data["Sentimiento"].value_counts()
-            fig, ax = plt.subplots()
-            sentiment_counts.plot(kind="bar", ax=ax)
-            ax.set_xlabel("Sentimiento")
-            ax.set_ylabel("Conteo")
-            st.pyplot(fig)
-            
-            # Gráfico de pastel
-            fig, ax = plt.subplots()
-            sentiment_counts.plot(kind="pie", autopct='%1.1f%%', ax=ax)
-            st.pyplot(fig)
-
-            # Gráfico 2: Análisis de Productos por Sentimiento
-            if category_column != "Ninguno":
-                st.header("Análisis de Productos por Sentimiento")
-                product_sentiment_counts = data.groupby([category_column, "Sentimiento"]).size().unstack(fill_value=0)
+            # Verificar si la columna "Sentimiento" fue creada correctamente
+            if "Sentimiento" in data.columns:
+                # Gráfico 1: Distribución de Sentimientos
+                st.header("Distribución de Sentimientos")
+                sentiment_counts = data["Sentimiento"].value_counts()
                 fig, ax = plt.subplots()
-                product_sentiment_counts.plot(kind="bar", stacked=False, ax=ax)
-                ax.set_xlabel(category_column)
-                ax.set_ylabel("Conteo de Sentimiento")
+                sentiment_counts.plot(kind="bar", ax=ax)
+                ax.set_xlabel("Sentimiento")
+                ax.set_ylabel("Conteo")
+                st.pyplot(fig)
+                
+                # Gráfico de pastel
+                fig, ax = plt.subplots()
+                sentiment_counts.plot(kind="pie", autopct='%1.1f%%', ax=ax)
                 st.pyplot(fig)
 
-            # Gráfico 3: Sentimiento Promedio por Categoría o Producto
-            st.header("Sentimiento Promedio por Categoría o Producto")
-            sentiment_mapping = {"Positivo": 1, "Neutral": 0, "Negativo": -1}
-            data["sentiment_score"] = data["Sentimiento"].map(sentiment_mapping)
-            if category_column != "Ninguno":
-                avg_sentiment = data.groupby(category_column)["sentiment_score"].mean()
-                fig, ax = plt.subplots()
-                avg_sentiment.plot(kind="line", ax=ax)
-                ax.set_xlabel(category_column)
-                ax.set_ylabel("Puntaje Promedio de Sentimiento")
-                st.pyplot(fig)
+                # Gráfico 2: Análisis de Productos por Sentimiento
+                if category_column != "Ninguno":
+                    st.header("Análisis de Productos por Sentimiento")
+                    product_sentiment_counts = data.groupby([category_column, "Sentimiento"]).size().unstack(fill_value=0)
+                    fig, ax = plt.subplots()
+                    product_sentiment_counts.plot(kind="bar", stacked=False, ax=ax)
+                    ax.set_xlabel(category_column)
+                    ax.set_ylabel("Conteo de Sentimiento")
+                    st.pyplot(fig)
 
-            # Gráfico 4: Tendencias de Sentimiento por Fecha
-            if date_column != "Ninguno":
-                st.header("Tendencias de Sentimiento por Fecha")
-                data[date_column] = pd.to_datetime(data[date_column])
-                sentiment_trend = data.groupby([date_column, "Sentimiento"]).size().unstack(fill_value=0)
-                fig, ax = plt.subplots()
-                sentiment_trend.plot(kind="line", ax=ax)
-                ax.set_xlabel("Fecha")
-                ax.set_ylabel("Conteo de Sentimiento")
-                st.pyplot(fig)
+                # Gráfico 3: Sentimiento Promedio por Categoría o Producto
+                st.header("Sentimiento Promedio por Categoría o Producto")
+                sentiment_mapping = {"Positivo": 1, "Neutral": 0, "Negativo": -1}
+                data["sentiment_score"] = data["Sentimiento"].map(sentiment_mapping)
+                if category_column != "Ninguno":
+                    avg_sentiment = data.groupby(category_column)["sentiment_score"].mean()
+                    fig, ax = plt.subplots()
+                    avg_sentiment.plot(kind="line", ax=ax)
+                    ax.set_xlabel(category_column)
+                    ax.set_ylabel("Puntaje Promedio de Sentimiento")
+                    st.pyplot(fig)
 
-            # Explicación con OpenAI (una sola llamada)
-            if st.button("Generar Explicación de los Gráficos"):
-                openai.api_key = openai_api_key
-                explanation_prompt = """Explica brevemente los siguientes gráficos de análisis de sentimiento:
-                1. Distribución de Sentimientos - Muestra los porcentajes de cada tipo de sentimiento (Positivo, Negativo, Neutral) en el dataset.
-                2. Análisis de Productos por Sentimiento - Muestra los sentimientos específicos de cada producto o categoría.
-                3. Sentimiento Promedio por Categoría o Producto - Asigna puntajes a cada sentimiento y muestra el promedio por categoría o producto.
-                4. Tendencias de Sentimiento por Fecha - Visualiza cómo cambian los sentimientos a lo largo del tiempo en el dataset.
-                """
-                try:
-                    response = openai.Completion.create(
-                        engine="text-davinci-003",
-                        prompt=explanation_prompt,
-                        max_tokens=150
-                    )
-                    explanation = response.choices[0].text.strip()
-                    st.write("### Explicación de los Gráficos:")
-                    st.write(explanation)
-                except Exception as e:
-                    st.error("Error al generar la explicación: " + str(e))
+                # Gráfico 4: Tendencias de Sentimiento por Fecha
+                if date_column != "Ninguno":
+                    st.header("Tendencias de Sentimiento por Fecha")
+                    data[date_column] = pd.to_datetime(data[date_column])
+                    sentiment_trend = data.groupby([date_column, "Sentimiento"]).size().unstack(fill_value=0)
+                    fig, ax = plt.subplots()
+                    sentiment_trend.plot(kind="line", ax=ax)
+                    ax.set_xlabel("Fecha")
+                    ax.set_ylabel("Conteo de Sentimiento")
+                    st.pyplot(fig)
+
+                # Explicación con OpenAI (una sola llamada)
+                if st.button("Generar Explicación de los Gráficos"):
+                    openai.api_key = openai_api_key
+                    explanation_prompt = """Explica brevemente los siguientes gráficos de análisis de sentimiento:
+                    1. Distribución de Sentimientos - Muestra los porcentajes de cada tipo de sentimiento (Positivo, Negativo, Neutral) en el dataset.
+                    2. Análisis de Productos por Sentimiento - Muestra los sentimientos específicos de cada producto o categoría.
+                    3. Sentimiento Promedio por Categoría o Producto - Asigna puntajes a cada sentimiento y muestra el promedio por categoría o producto.
+                    4. Tendencias de Sentimiento por Fecha - Visualiza cómo cambian los sentimientos a lo largo del tiempo en el dataset.
+                    """
+                    try:
+                        response = openai.Completion.create(
+                            engine="text-davinci-003",
+                            prompt=explanation_prompt,
+                            max_tokens=150
+                        )
+                        explanation = response.choices[0].text.strip()
+                        st.write("### Explicación de los Gráficos:")
+                        st.write(explanation)
+                    except Exception as e:
+                        st.error("Error al generar la explicación: " + str(e))
 else:
     st.info("Introduce la API y sube un archivo para comenzar.")
+
 
