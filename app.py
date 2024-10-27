@@ -9,11 +9,6 @@ import openai
 nlp = spacy.blank("en")  # Crear un pipeline vacío sin necesidad de `en_core_web_sm`
 nlp.add_pipe("spacytextblob")
 
-# Configuración de la barra lateral
-st.sidebar.header("Configuración")
-openai_api_key = st.sidebar.text_input("Introduce tu API de OpenAI", type="password")
-uploaded_file = st.sidebar.file_uploader("Sube tu archivo CSV", type=["csv"])
-
 # Ingreso de la API Key de OpenAI
 st.sidebar.header("Configuración de la API de OpenAI")
 openai_api_key = st.sidebar.text_input("Introduce tu API Key de OpenAI", type="password")
@@ -21,7 +16,6 @@ openai_api_key = st.sidebar.text_input("Introduce tu API Key de OpenAI", type="p
 # Función para verificar la validez de la API Key
 def verificar_api(api_key):
     try:
-        # Asignamos la API Key
         openai.api_key = api_key
         # Hacemos una solicitud de prueba
         openai.Completion.create(
@@ -46,6 +40,7 @@ else:
     st.sidebar.info("Introduce tu API Key de OpenAI para continuar.")
 
 # Continuar con el resto de la aplicación solo si la API es válida
+uploaded_file = st.sidebar.file_uploader("Sube tu archivo CSV", type=["csv"])
 if openai_api_key and verificar_api(openai_api_key) and uploaded_file:
     # Cargar los datos
     data = pd.read_csv(uploaded_file)
@@ -87,7 +82,52 @@ if openai_api_key and verificar_api(openai_api_key) and uploaded_file:
             
             # Verificar si la columna "Sentimiento" fue creada correctamente
             if "Sentimiento" in data.columns:
-                # Mostrar gráficos (similar al código anterior)
+                # Gráfico 1: Distribución de Sentimientos
+                st.header("Distribución de Sentimientos")
+                sentiment_counts = data["Sentimiento"].value_counts()
+                fig, ax = plt.subplots()
+                sentiment_counts.plot(kind="bar", ax=ax)
+                ax.set_xlabel("Sentimiento")
+                ax.set_ylabel("Conteo")
+                st.pyplot(fig)
+                
+                # Gráfico de pastel
+                fig, ax = plt.subplots()
+                sentiment_counts.plot(kind="pie", autopct='%1.1f%%', ax=ax)
+                st.pyplot(fig)
+
+                # Gráfico 2: Análisis de Productos por Sentimiento
+                if category_column != "Ninguno":
+                    st.header("Análisis de Productos por Sentimiento")
+                    product_sentiment_counts = data.groupby([category_column, "Sentimiento"]).size().unstack(fill_value=0)
+                    fig, ax = plt.subplots()
+                    product_sentiment_counts.plot(kind="bar", stacked=False, ax=ax)
+                    ax.set_xlabel(category_column)
+                    ax.set_ylabel("Conteo de Sentimiento")
+                    st.pyplot(fig)
+
+                # Gráfico 3: Sentimiento Promedio por Categoría o Producto
+                st.header("Sentimiento Promedio por Categoría o Producto")
+                sentiment_mapping = {"Positivo": 1, "Neutral": 0, "Negativo": -1}
+                data["sentiment_score"] = data["Sentimiento"].map(sentiment_mapping)
+                if category_column != "Ninguno":
+                    avg_sentiment = data.groupby(category_column)["sentiment_score"].mean()
+                    fig, ax = plt.subplots()
+                    avg_sentiment.plot(kind="line", ax=ax)
+                    ax.set_xlabel(category_column)
+                    ax.set_ylabel("Puntaje Promedio de Sentimiento")
+                    st.pyplot(fig)
+
+                # Gráfico 4: Tendencias de Sentimiento por Fecha
+                if date_column != "Ninguno":
+                    st.header("Tendencias de Sentimiento por Fecha")
+                    data[date_column] = pd.to_datetime(data[date_column])
+                    sentiment_trend = data.groupby([date_column, "Sentimiento"]).size().unstack(fill_value=0)
+                    fig, ax = plt.subplots()
+                    sentiment_trend.plot(kind="line", ax=ax)
+                    ax.set_xlabel("Fecha")
+                    ax.set_ylabel("Conteo de Sentimiento")
+                    st.pyplot(fig)
 
                 # Explicación con OpenAI (una sola llamada)
                 if st.button("Generar Explicación de los Gráficos"):
@@ -111,4 +151,4 @@ if openai_api_key and verificar_api(openai_api_key) and uploaded_file:
                     except Exception as e:
                         st.error(f"Ocurrió un error inesperado: {e}")
 else:
-    st.info("Introduce la API y sube un archivo para comenzar.")
+    st.info("Introduce tu API Key de OpenAI y sube un archivo para continuar.")
