@@ -4,12 +4,10 @@ import matplotlib.pyplot as plt
 import spacy
 from spacytextblob.spacytextblob import SpacyTextBlob
 import openai
-from io import StringIO
 
-# Cargar el modelo preinstalado en_core_web_sm
-nlp = spacy.load("en_core_web_sm")
-if "spacytextblob" not in nlp.pipe_names:
-    nlp.add_pipe("spacytextblob")
+# Inicializar `spacy` y añadir SpacyTextBlob directamente
+nlp = spacy.blank("en")  # Crear un pipeline vacío sin necesidad de `en_core_web_sm`
+nlp.add_pipe("spacytextblob")
 
 # Configuración de la barra lateral
 st.sidebar.header("Configuración")
@@ -106,3 +104,5 @@ if openai_api_key and uploaded_file:
             st.write(explanation)
         except Exception as e:
             st.error("Error al generar la explicación: " + str(e))
+else:
+    st.info("Introduce la API y sube un archivo para comenzar.")
