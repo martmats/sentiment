@@ -14,9 +14,14 @@ st.sidebar.header("Configuración")
 openai_api_key = st.sidebar.text_input("Introduce tu API de OpenAI", type="password")
 uploaded_file = st.sidebar.file_uploader("Sube tu archivo CSV", type=["csv"])
 
-# Función para verificar la API de OpenAI
+# Ingreso de la API Key de OpenAI
+st.sidebar.header("Configuración de la API de OpenAI")
+openai_api_key = st.sidebar.text_input("Introduce tu API Key de OpenAI", type="password")
+
+# Función para verificar la validez de la API Key
 def verificar_api(api_key):
     try:
+        # Asignamos la API Key
         openai.api_key = api_key
         # Hacemos una solicitud de prueba
         openai.Completion.create(
@@ -25,21 +30,20 @@ def verificar_api(api_key):
             max_tokens=5
         )
         return True
-    except openai.error.OpenAIError as e:
-        st.warning(f"Error en la autenticación de la API: {e}")
+    except openai.error.AuthenticationError:
         return False
     except Exception as e:
         st.warning(f"Error en la verificación de la API: {e}")
         return False
 
-# Verificar la API antes de proceder
+# Verificar si la API Key está ingresada y válida
 if openai_api_key:
     if verificar_api(openai_api_key):
-        st.sidebar.success("Clave de API válida.")
+        st.sidebar.success("API Key válida y verificada correctamente.")
     else:
-        st.sidebar.error("Clave de API inválida. Por favor, verifica tu clave de OpenAI.")
+        st.sidebar.error("API Key inválida. Por favor, verifica tu clave de OpenAI.")
 else:
-    st.sidebar.info("Introduce la API de OpenAI para continuar.")
+    st.sidebar.info("Introduce tu API Key de OpenAI para continuar.")
 
 # Continuar con el resto de la aplicación solo si la API es válida
 if openai_api_key and verificar_api(openai_api_key) and uploaded_file:
