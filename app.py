@@ -14,10 +14,34 @@ st.sidebar.header("Configuración")
 openai_api_key = st.sidebar.text_input("Introduce tu API de OpenAI", type="password")
 uploaded_file = st.sidebar.file_uploader("Sube tu archivo CSV", type=["csv"])
 
-if openai_api_key and uploaded_file:
-    # Configurar la API de OpenAI
-    openai.api_key = openai_api_key
+# Función para verificar la API de OpenAI
+def verificar_api(api_key):
+    try:
+        openai.api_key = api_key
+        # Hacemos una solicitud de prueba
+        openai.Completion.create(
+            engine="text-davinci-003",
+            prompt="Prueba de API",
+            max_tokens=5
+        )
+        return True
+    except openai.error.AuthenticationError:
+        return False
+    except Exception as e:
+        st.warning(f"Error en la verificación de la API: {e}")
+        return False
 
+# Verificar la API antes de proceder
+if openai_api_key:
+    if verificar_api(openai_api_key):
+        st.sidebar.success("Clave de API válida.")
+    else:
+        st.sidebar.error("Clave de API inválida. Por favor, verifica tu clave de OpenAI.")
+else:
+    st.sidebar.info("Introduce la API de OpenAI para continuar.")
+
+# Continuar con el resto de la aplicación solo si la API es válida
+if openai_api_key and verificar_api(openai_api_key) and uploaded_file:
     # Cargar los datos
     data = pd.read_csv(uploaded_file)
     
