@@ -25,7 +25,8 @@ def verificar_api(api_key):
             max_tokens=5
         )
         return True
-    except openai.error.AuthenticationError:
+    except openai.error.OpenAIError as e:
+        st.warning(f"Error en la autenticación de la API: {e}")
         return False
     except Exception as e:
         st.warning(f"Error en la verificación de la API: {e}")
