@@ -3,16 +3,18 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import spacy
 from spacytextblob.spacytextblob import SpacyTextBlob
+import openai
 from io import StringIO
 
 # Configuración de la barra lateral
 st.sidebar.header("Configuración")
+openai_api_key = st.sidebar.text_input("Introduce tu API de OpenAI", type="password")
 uploaded_file = st.sidebar.file_uploader("Sube tu archivo CSV", type=["csv"])
 text_column = st.sidebar.text_input("Columna de Texto para Análisis de Sentimiento", value="texto")
 category_column = st.sidebar.text_input("Columna de Categoría o Producto (Opcional)")
 date_column = st.sidebar.text_input("Columna de Fecha (Opcional)")
 
-if uploaded_file and text_column:
+if openai_api_key and uploaded_file and text_column:
     # Cargar los datos
     data = pd.read_csv(uploaded_file)
     
@@ -80,5 +82,26 @@ if uploaded_file and text_column:
         ax.set_xlabel("Fecha")
         ax.set_ylabel("Conteo de Sentimiento")
         st.pyplot(fig)
+
+    # Explicación con OpenAI (una sola llamada)
+    if st.button("Generar Explicación de los Gráficos"):
+        openai.api_key = openai_api_key
+        explanation_prompt = """Explica brevemente los siguientes gráficos de análisis de sentimiento:
+        1. Distribución de Sentimientos - Muestra los porcentajes de cada tipo de sentimiento (Positivo, Negativo, Neutral) en el dataset.
+        2. Análisis de Productos por Sentimiento - Muestra los sentimientos específicos de cada producto o categoría.
+        3. Sentimiento Promedio por Categoría o Producto - Asigna puntajes a cada sentimiento y muestra el promedio por categoría o producto.
+        4. Tendencias de Sentimiento por Fecha - Visualiza cómo cambian los sentimientos a lo largo del tiempo en el dataset.
+        """
+        try:
+            response = openai.Completion.create(
+                engine="text-davinci-003",
+                prompt=explanation_prompt,
+                max_tokens=150
+            )
+            explanation = response.choices[0].text.strip()
+            st.write("### Explicación de los Gráficos:")
+            st.write(explanation)
+        except Exception as e:
+            st.error("Error al generar la explicación: " + str(e))
 else:
-    st.info("Sube un archivo y selecciona la columna de texto para empezar.")
+    st.info("Introduce la API y sube un archivo para comenzar.")
