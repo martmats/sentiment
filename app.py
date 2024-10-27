@@ -1,12 +1,9 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
-from nltk import download
+import spacy
+from spacytextblob.spacytextblob import SpacyTextBlob
 from io import StringIO
-
-# Descargar datos de VADER (necesario la primera vez)
-download('vader_lexicon')
 
 # Configuración de la barra lateral
 st.sidebar.header("Configuración")
@@ -19,15 +16,17 @@ if uploaded_file and text_column:
     # Cargar los datos
     data = pd.read_csv(uploaded_file)
     
-    # Inicializar el analizador de sentimientos
-    analyzer = SentimentIntensityAnalyzer()
+    # Inicializar spacy con SpacyTextBlob
+    nlp = spacy.load("en_core_web_sm")
+    nlp.add_pipe("spacytextblob")
 
-    # Clasificar Sentimiento usando VADER
+    # Clasificar Sentimiento usando SpacyTextBlob
     def classify_sentiment(text):
-        scores = analyzer.polarity_scores(text)
-        if scores['compound'] >= 0.05:
+        doc = nlp(text)
+        polarity = doc._.blob.polarity
+        if polarity > 0.1:
             return "Positivo"
-        elif scores['compound'] <= -0.05:
+        elif polarity < -0.1:
             return "Negativo"
         else:
             return "Neutral"
