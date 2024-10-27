@@ -23,8 +23,10 @@ if openai_api_key and uploaded_file:
     category_column = st.sidebar.selectbox("Selecciona la columna de categoría o producto (opcional)", ["Ninguno"] + list(data.columns))
     date_column = st.sidebar.selectbox("Selecciona la columna de fecha (opcional)", ["Ninguno"] + list(data.columns))
     
-    # Clasificar Sentimiento usando SpacyTextBlob
+    # Clasificar Sentimiento usando SpacyTextBlob, con manejo de valores nulos o no textuales
     def classify_sentiment(text):
+        if pd.isna(text) or not isinstance(text, str):
+            return "Neutral"  # Omitir o clasificar como neutral si no es texto
         doc = nlp(text)
         polarity = doc._.blob.polarity
         if polarity > 0.1:
