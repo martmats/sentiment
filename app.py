@@ -112,18 +112,17 @@ if openai_api_key and uploaded_file:
                 4. Tendencias de Sentimiento por Fecha - Visualiza cómo cambian los sentimientos a lo largo del tiempo en el dataset.
                 """
                 try:
-                    response = openai.ChatCompletion.create(
-                        model="gpt-3.5-turbo",
-                        messages=[
-                            {"role": "system", "content": "Eres un experto en análisis de datos y estrategias de marketing."},
-                            {"role": "user", "content": explanation_prompt}
-                        ]
+                    response = openai.Completion.create(
+                        model="text-davinci-003",
+                        prompt=explanation_prompt,
+                        max_tokens=250
                     )
-                    explanation = response.choices[0].message['content'].strip()
+                    explanation = response.choices[0].text.strip()
                     st.write("### Explicación de los Gráficos:")
                     st.write(explanation)
                 except Exception as e:
                     st.error(f"Error en la solicitud a la API de OpenAI: {e}")
 else:
     st.info("Introduce tu API Key de OpenAI y sube un archivo para continuar.")
+
 
